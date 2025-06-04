@@ -50,7 +50,7 @@ mod test {
         let data_2 = Vec::from(b"fran");
         let data_3 = Vec::from(b"nati");
         let data_4 = Vec::from(b"lola");
-        let mock_data: Input  = vec![data_1, data_2, data_3, data_4];
+        let mock_data: Input = vec![data_1, data_2, data_3, data_4];
         let hashes = create_data_hashes(&mock_data);
         for i in 0..hashes.len() {
             assert_eq!(hashes[i], sha256::digest(mock_data[i].clone()));
@@ -68,25 +68,22 @@ mod test {
         let data_3 = Vec::from(b"nati");
         let data_4 = Vec::from(b"lola");
 
-        let mock_data: Input  = vec![data_1, data_2, data_3, data_4];
+        let mock_data: Input = vec![data_1, data_2, data_3, data_4];
 
         let merkle_tree = create_merkle_tree_from_data(&mock_data);
         assert_eq!(merkle_tree.len(), 3);
         for i in 0..merkle_tree.len() {
             if i != merkle_tree.len() - 1 {
                 let higher_level = merkle_tree[i].clone();
-                let lower_level = merkle_tree[i+1].clone();
-                for x in 0..higher_level.len()  {
+                let lower_level = merkle_tree[i + 1].clone();
+                for x in 0..higher_level.len() {
                     let l_child = lower_level[x * 2].clone();
-                    let r_child = lower_level[x*2 + 1].clone();
+                    let r_child = lower_level[x * 2 + 1].clone();
                     let concat_children = l_child + &r_child;
                     let hashed_children = sha256::digest(concat_children);
                     assert_eq!(higher_level[x], hashed_children);
                 }
             }
         }
-
     }
-
-
 }

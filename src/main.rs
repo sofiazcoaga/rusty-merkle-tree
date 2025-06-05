@@ -1,8 +1,7 @@
 use std::vec;
 
-/// sha256::digest("") - the hash of an empty string
+/// sha256::digest(&[0]) - the hash of 0
 const DEFAULT_ZERO_HASH: &str = "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d";
-const DEFAULT_ZERO: [u8; 1] = [0];
 
 fn main() {
     println!("Hello, world!");
@@ -14,6 +13,26 @@ pub struct MerkleTree {
     last_element_index: usize,
 }
 impl MerkleTree {
+
+    pub fn get_merkle_proof(&self, element_index: usize) -> Vec<String> {
+        let mut proof = Vec::new();
+        let mut element_index = element_index;
+        let mut level = self.height() - 1;
+
+        while level != 0 {
+            match element_index % 2 {
+                0 => element_index += 1,
+                _ => element_index -= 1,
+            }
+            let proof_element = self.get_tree_element(level, element_index).clone();
+            proof.push(proof_element);
+            level = level - 1;
+            element_index /= 2;
+        }
+
+        proof
+    }
+
     pub fn new(merkle_tree: Vec<Vec<String>>, last_element_index: usize) -> Self {
         MerkleTree {
             merkle_tree,
@@ -98,6 +117,7 @@ impl MerkleTree {
         let mut level = self.height() - 1;
         let mut element_hash = sha256::digest(new_element.clone());
         self.set_element(level, element_index, element_hash.clone());
+
         while level != 0 {
             let concat = match element_index % 2 {
                 0 => element_hash.clone() + self.get_tree_element(level, element_index + 1),
@@ -191,6 +211,7 @@ pub fn verify_element(
     hash == root
 }
 
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -236,12 +257,10 @@ mod test {
         let mock_data = create_mock_data_from_strings(vec!["12313414", "1345", "124214", "125151"]);
         let merkle_tree = create_merkle_tree_from_data(&mock_data);
 
+        let proof = merkle_tree.get_merkle_proof(0);
         let mut is_element_present = verify_element(
             mock_data[0].clone(),
-            &vec![
-                merkle_tree.get_tree_element(2, 1).clone(),
-                merkle_tree.get_tree_element(1, 1).clone(),
-            ],
+            &proof,
             merkle_tree.get_tree_element(0, 0).clone(),
             0,
         );
@@ -249,10 +268,7 @@ mod test {
 
         is_element_present = verify_element(
             b"absent_element".to_vec(),
-            &vec![
-                merkle_tree.get_tree_element(2, 1).clone(),
-                merkle_tree.get_tree_element(1, 1).clone(),
-            ],
+            &proof,
             merkle_tree.get_tree_element(0, 0).clone(),
             0,
         );

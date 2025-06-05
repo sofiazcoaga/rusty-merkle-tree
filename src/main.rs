@@ -29,11 +29,11 @@ impl MerkleTree {
         self.merkle_tree.push(level);
     }
 
-    pub fn len(&self) -> usize {
+    pub fn height(&self) -> usize {
         self.merkle_tree.len()
     }
 
-    pub fn set_last_element_index(&mut self, element_index: usize) {
+    fn set_last_element_index(&mut self, element_index: usize) {
         self.last_element_index = element_index;
     }
 
@@ -214,10 +214,10 @@ mod test {
         let mock_data = create_mock_data_from_strings(vec!["pizza", "chocolate", "helado", "coca"]);
         let merkle_tree = create_merkle_tree_from_data(&mock_data);
 
-        assert_eq!(merkle_tree.len(), 3);
+        assert_eq!(merkle_tree.height(), 3);
         assert_eq!(merkle_tree.last_element_index(), mock_data.len() - 1);
-        for i in 0..merkle_tree.len() {
-            if i != merkle_tree.len() - 1 {
+        for i in 0..merkle_tree.height() {
+            if i != merkle_tree.height() - 1 {
                 let higher_level = merkle_tree.get_level(i);
                 let lower_level = merkle_tree.get_level(i + 1);
                 for x in 0..higher_level.len() {

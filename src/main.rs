@@ -31,7 +31,7 @@ impl MerkleTree {
         self.merkle_tree.len()
     }
 
-    pub fn set_last_element_index(&mut self, element_index: usize) {
+    fn set_last_element_index(&mut self, element_index: usize) {
         self.last_element_index = element_index;
     }
 

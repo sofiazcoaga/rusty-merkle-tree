@@ -47,17 +47,33 @@ fn create_new_level(previous_level: &[String]) -> Vec<String> {
     new_level
 }
 
+pub fn verify_element(
+    element_data: Vec<u8>,
+    proof: &Vec<String>,
+    root: String,
+    element_index: usize,
+) -> bool {
+    let mut hash = sha256::digest(element_data);
+    let mut index = element_index;
+    for p in proof {
+        let concat = match index % 2 {
+            0 => hash.clone() + p,
+            _ => p.to_owned() + &hash,
+        };
+        hash = sha256::digest(concat);
+        index /= 2;
+    }
+    hash == root
+}
+
 #[cfg(test)]
 mod test {
+
     use super::*;
 
     #[test]
     fn creates_data_hashes() {
-        let data_1 = Vec::from(b"sofi");
-        let data_2 = Vec::from(b"fran");
-        let data_3 = Vec::from(b"nati");
-        let data_4 = Vec::from(b"lola");
-        let mock_data: Input = vec![data_1, data_2, data_3, data_4];
+        let mock_data = create_mock_data_from_strings(vec!["sofi", "fran", "nati", "lola"]);
         let hashes = create_data_hashes(&mock_data);
 
         for i in 0..hashes.len() {
@@ -71,13 +87,7 @@ mod test {
         //           R
         //        H5   H6
         //      H1 H2 H3 H4   --> three levels
-        let data_1 = Vec::from(b"sofi");
-        let data_2 = Vec::from(b"fran");
-        let data_3 = Vec::from(b"nati");
-        let data_4 = Vec::from(b"lola");
-
-        let mock_data: Input = vec![data_1, data_2, data_3, data_4];
-
+        let mock_data = create_mock_data_from_strings(vec!["pizza", "chocolate", "helado", "coca"]);
         let merkle_tree = create_merkle_tree_from_data(&mock_data);
         assert_eq!(merkle_tree.len(), 3);
 
@@ -94,5 +104,35 @@ mod test {
                 }
             }
         }
+    }
+
+    #[test]
+    fn verify_element_in_tree() {
+        let mock_data = create_mock_data_from_strings(vec!["12313414", "1345", "124214", "125151"]);
+        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+        let mut is_element_present = verify_element(
+            mock_data[0].clone(),
+            &vec![merkle_tree[2][1].clone(), merkle_tree[1][1].clone()],
+            merkle_tree[0][0].clone(),
+            0,
+        );
+        assert!(is_element_present);
+
+        is_element_present = verify_element(
+            b"absent_element".to_vec(),
+            &vec![merkle_tree[2][1].clone(), merkle_tree[1][1].clone()],
+            merkle_tree[0][0].clone(),
+            0,
+        );
+        assert!(!is_element_present);
+    }
+
+    fn create_mock_data_from_strings(data: Vec<&str>) -> Vec<Vec<u8>> {
+        let mut mock_data = Vec::new();
+        for e in data {
+            let bytes = e.as_bytes().to_vec();
+            mock_data.push(bytes);
+        }
+        mock_data
     }
 }

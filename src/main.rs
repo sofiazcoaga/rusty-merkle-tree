@@ -5,29 +5,53 @@ fn main() {
     println!("Hello, world!");
 }
 
-type MerkleTree = Vec<Vec<String>>;
-// struct MerkleTree {
-//     merkle_tree: Vec<Vec<String>>,
-//     last_original_element: usize
-// }
+//type MerkleTree = Vec<Vec<String>>;
+pub struct MerkleTree {
+    merkle_tree: Vec<Vec<String>>,
+    last_element: usize
+}
+impl MerkleTree {
+    pub fn new() -> Self {
+        MerkleTree {
+            merkle_tree: Vec::new(),
+            last_element: 0
+        }
+    }
+
+    pub fn push_level_front(&mut self, level: Vec<String>) {
+        self.merkle_tree.insert(0, level);
+    }
+
+    pub fn push_level_back(&mut self, level: Vec<String>) {
+        self.merkle_tree.push(level);
+    }
+
+    pub fn len(&self) -> usize {
+        self.merkle_tree.len()
+    }
+
+    pub fn set_last_element(&mut self, element_index: usize) {
+        self.last_element = element_index;
+    }
+}
 type Input = Vec<Vec<u8>>;
 
 pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
-
-    let mut merkle_tree: MerkleTree = Vec::new();
+    let mut merkle_tree = MerkleTree::new();
     let data_hashes_level = create_data_hashes(inputs);
-    merkle_tree.push(data_hashes_level.clone());
+    merkle_tree.push_level_back(data_hashes_level.clone());
 
     let mut previous_level = data_hashes_level;
     let mut level_len = previous_level.len();
 
     while level_len != 1 {
         let new_level = create_new_level(&previous_level);
-        merkle_tree.insert(0, new_level.clone());
+        merkle_tree.push_level_front(new_level.clone());
         previous_level = new_level;
         level_len = previous_level.len();
     }
 
+    merkle_tree.set_last_element(inputs.len() -1 );
     merkle_tree
 }
 
@@ -100,9 +124,10 @@ mod test {
         //        H5   H6
         //      H1 H2 H3 H4   --> three levels
         let mock_data = create_mock_data_from_strings(vec!["pizza", "chocolate", "helado", "coca"]);
-        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+        let merkle_tree_struct = create_merkle_tree_from_data(&mock_data);
+        let merkle_tree = merkle_tree_struct.merkle_tree;
         assert_eq!(merkle_tree.len(), 3);
-
+        assert_eq!(merkle_tree_struct.last_element, mock_data.len()-1);
         for i in 0..merkle_tree.len() {
             if i != merkle_tree.len() - 1 {
                 let higher_level = merkle_tree[i].clone();
@@ -122,7 +147,8 @@ mod test {
     #[test]
     fn verify_element_in_tree() {
         let mock_data = create_mock_data_from_strings(vec!["12313414", "1345", "124214", "125151"]);
-        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+        let merkle_tree_struct = create_merkle_tree_from_data(&mock_data);
+        let merkle_tree = merkle_tree_struct.merkle_tree;
         let mut is_element_present = verify_element(
             mock_data[0].clone(),
             &vec![merkle_tree[2][1].clone(), merkle_tree[1][1].clone()],
@@ -144,10 +170,13 @@ mod test {
     fn fill_until_power_of_two() {
         let mock_data = create_mock_data_from_strings(vec!["data1", "data2", "data3", "data4", "data5"]);
         let data_hashes = create_data_hashes(&mock_data);
+        let merkle_tree_struct = create_merkle_tree_from_data(&mock_data);
         let fill_amount = mock_data.len().next_power_of_two() - mock_data.len();
         let default_data = data_hashes[data_hashes.len()-fill_amount..data_hashes.len()].to_vec();
+        assert_eq!(merkle_tree_struct.last_element, mock_data.len() -1 );
         assert!(default_data.iter().all(|x| *x == DEFAULT_HASH_OF_EMTPY.to_string()));
         assert_eq!(data_hashes.len(), mock_data.len().next_power_of_two());
+
     }
 
     /// Util Functions

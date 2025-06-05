@@ -1,6 +1,8 @@
+use std::vec;
+
 /// sha256::digest("") - the hash of an empty string
-const DEFAULT_HASH_OF_EMTPY: &str =
-    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+const DEFAULT_ZERO_HASH: &str = "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d";
+const DEFAULT_ZERO: [u8; 1] = [0];
 
 fn main() {
     println!("Hello, world!");
@@ -50,25 +52,90 @@ impl MerkleTree {
     pub fn is_empty(&self) -> bool {
         self.merkle_tree.is_empty()
     }
+
+    pub fn leaves_amount(&self) -> usize {
+        self.get_level(self.len() - 1).len()
+    }
+
+    fn set_element(&mut self, level: usize, index: usize, element: String) {
+        self.merkle_tree[level][index] = element;
+    }
+
+    pub fn add_element(&mut self, new_element: Vec<u8>) {
+        let next_index = self.last_element_index() + 1;
+
+        // In case the tree already has a data amount that is a power of two, an extension must be done
+        // recalculating fill data
+        if next_index == self.leaves_amount() {
+            self.extend_tree(new_element);
+        } else {
+            self.modify_existing_leaf_and_update_parents(new_element);
+        }
+        self.set_last_element_index(next_index);
+    }
+
+    fn extend_tree(&mut self, new_element: Vec<u8>) {
+        let leaves_amount = self.leaves_amount();
+        let fill_amount = ((leaves_amount + 1).next_power_of_two() - leaves_amount) - 1;
+        let mut leaves = vec![sha256::digest(new_element)];
+        leaves.append(&mut vec![DEFAULT_ZERO_HASH.to_string(); fill_amount]);
+
+        let mut half_merkle_tree = create_merkle_tree_from_leaves(leaves);
+        // Push new merkle tree levels into previous one
+        for i in 0..self.len() {
+            self.merkle_tree[i].append(&mut half_merkle_tree[i]);
+        }
+
+        // create new zero level
+        let root =
+            sha256::digest(self.get_tree_element(0, 0).clone() + self.get_tree_element(0, 1));
+        self.push_level_front(vec![root]);
+    }
+
+    fn modify_existing_leaf_and_update_parents(&mut self, new_element: Vec<u8>) {
+        let mut element_index = self.last_element_index + 1;
+        let mut parent_index = element_index / 2;
+        let mut level = self.len() - 1;
+        let mut element_hash = sha256::digest(new_element.clone());
+        self.set_element(level, element_index, element_hash.clone());
+        while level != 0 {
+            let concat = match element_index % 2 {
+                0 => element_hash.clone() + self.get_tree_element(level, element_index + 1),
+                _ => self.get_tree_element(level, element_index - 1).clone() + &element_hash,
+            };
+            element_hash = sha256::digest(concat);
+            self.set_element(level - 1, parent_index, element_hash.clone());
+            level -= 1;
+            element_index = parent_index;
+            parent_index = element_index / 2;
+        }
+    }
 }
 
 type Input = Vec<Vec<u8>>;
 
-pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
-    let mut merkle_tree = MerkleTree::default();
-    let data_hashes_level = create_data_hashes(inputs);
-    merkle_tree.push_level_back(data_hashes_level.clone());
-
-    let mut previous_level = data_hashes_level;
+fn create_merkle_tree_from_leaves(leaves: Vec<String>) -> Vec<Vec<String>> {
+    let mut merkle_tree = Vec::new();
+    merkle_tree.push(leaves.clone());
+    let mut previous_level = leaves;
     let mut level_len = previous_level.len();
 
     while level_len != 1 {
         let new_level = create_new_level(&previous_level);
-        merkle_tree.push_level_front(new_level.clone());
+        merkle_tree.insert(0, new_level.clone());
         previous_level = new_level;
         level_len = previous_level.len();
     }
+    merkle_tree
+}
 
+pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
+    let mut merkle_tree = MerkleTree::default();
+    let data_hashes_level = create_data_hashes(inputs);
+
+    let tree = create_merkle_tree_from_leaves(data_hashes_level);
+
+    merkle_tree.merkle_tree = tree;
     merkle_tree.set_last_element_index(inputs.len() - 1);
     merkle_tree
 }
@@ -83,7 +150,7 @@ fn create_data_hashes(inputs: &Input) -> Vec<String> {
     if !data_len.is_power_of_two() {
         let fill_amount = data_len.next_power_of_two() - data_len;
         data_hashes.append(&mut vec![
-            DEFAULT_HASH_OF_EMTPY.to_string().clone();
+            DEFAULT_ZERO_HASH.to_string().clone();
             fill_amount
         ]);
     }
@@ -204,9 +271,29 @@ mod test {
         assert!(
             default_data
                 .iter()
-                .all(|x| *x == DEFAULT_HASH_OF_EMTPY.to_string())
+                .all(|x| *x == DEFAULT_ZERO_HASH.to_string())
         );
         assert_eq!(data_hashes.len(), mock_data.len().next_power_of_two());
+    }
+
+    #[test]
+    fn add_an_element_1() {
+        let mock_data = create_mock_data_from_strings(vec!["12345", "6789", "3645738"]);
+        let mut merkle_tree = create_merkle_tree_from_data(&mock_data);
+        // should have completed data to four
+        assert_eq!(
+            merkle_tree.leaves_amount(),
+            mock_data.len().next_power_of_two()
+        );
+        merkle_tree.add_element(b"128746124".to_vec());
+        // should still have same amount of elements
+        assert_eq!(
+            merkle_tree.leaves_amount(),
+            mock_data.len().next_power_of_two()
+        );
+
+        merkle_tree.add_element(b"295873459817".to_vec());
+        assert_eq!(merkle_tree.leaves_amount(), 8);
     }
 
     /// Util Functions

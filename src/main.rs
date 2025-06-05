@@ -61,43 +61,82 @@ impl MerkleTree {
         self.merkle_tree[level][index] = element;
     }
 
+    /// Allows the addition of a new element to the tree and updates the rest of it accordingly.
+    /// Because the Merkle Tree always has a leaves amount that is a power of two there are two cases to be considered:
+    /// Case 1 -> The tree was filled with default data to reach a power of two
+    ///     In this case, the new element will replace the first default element after the data and consequently its parents
+    ///     will be updated.
+    /// Case 2 -> The tree's current data elements amount naturally reaches a power of two
+    ///     In this case, the tree will need to fill its leaves with default data. This occurs because if we consider N the current number of leaves
+    ///     and N is a power of two (as a rule) then in no case will N + 1 (adding the new element) remain a power of two. Therefore a matching size
+    ///     tree will be constructed to do this and then will be appended to the original tree by calculating a new root that is built from.
+    ///     Consider the example:
+    ///                     R
+    ///                 H1      H2      --> adding a new element will require to have 8 leaves (next power of two).
+    ///             H3  H4      H5 H6
+    /// Therefore another "half tree" is constructed and both are appended converging in a calculated new root
+    ///                                 R'
+    ///                     R1                   R2
+    ///                 H1      H2            H7     H8                 Where everything under R1 is the original tree,
+    ///             H3  H4      H5 H6      H9 H10    H11 H12            everything under R2 is the new subtree and H9 is the hash of the new element
+    ///                                                                 (H10, H11, H12 are default data) and R' is the new calculated root (hash of (R1+R2))
+    ///
     pub fn add_element(&mut self, new_element: Vec<u8>) {
         let next_index = self.last_element_index() + 1;
 
-        // In case the tree already has a data amount that is a power of two, an extension must be done
-        // recalculating fill data
+        // Contemplates Case 2. The element requires a new index past the existing ones and the tree must be extended.
         if next_index == self.leaves_amount() {
             self.extend_tree(new_element);
-        } else {
+        }
+        // Contemplates Case 1. The new element replaces an existing index and the tree must be updated.
+        else {
             self.modify_existing_leaf_and_update_parents(new_element);
         }
+
+        // After any of the cases, the last index with real data must be updated.
         self.set_last_element_index(next_index);
     }
 
+    /// Manages the case when the tree must be extended to add an element.
     fn extend_tree(&mut self, new_element: Vec<u8>) {
         let leaves_amount = self.leaves_amount();
+        // The needed amount of default data to fill the leaves. Given by the calculation:
+        // Example: if the current tree has 4 leaves then:
+        // current_amount_of_leaves + new_leaf = 4 + 1 = 5
+        // next_power_of_two(5) = 8
+        // needed leaves to reach next power of two from current state -> 8 - 4 = 4
+        // taking into account that 1 of those leaves is the actual new data the fill amount is 3
         let fill_amount = ((leaves_amount + 1).next_power_of_two() - leaves_amount) - 1;
+
+        // Create the leaves level of the new subtree
         let mut leaves = vec![sha256::digest(new_element)];
         leaves.append(&mut vec![DEFAULT_ZERO_HASH.to_string(); fill_amount]);
 
+        // Create a new merkle tree for the new data subset
         let mut half_merkle_tree = create_merkle_tree_from_leaves(leaves);
-        // Push new merkle tree levels into previous one
+
+        // Append the new merkle tree's levels to the previous tree
         for i in 0..self.height() {
             self.merkle_tree[i].append(&mut half_merkle_tree[i]);
         }
 
-        // create new zero level
+        // Obtain the new root from the roots of the two subtrees.
         let root =
             sha256::digest(self.get_tree_element(0, 0).clone() + self.get_tree_element(0, 1));
         self.push_level_front(vec![root]);
     }
 
+    /// Manages the case when an element must be added in an existing position and the tree must be updated afterwards.
     fn modify_existing_leaf_and_update_parents(&mut self, new_element: Vec<u8>) {
         let mut element_index = self.last_element_index + 1;
         let mut parent_index = element_index / 2;
         let mut level = self.height() - 1;
         let mut element_hash = sha256::digest(new_element.clone());
+
+        // Insert the new element in the first index that was filled with default data
         self.set_element(level, element_index, element_hash.clone());
+
+        // While we are not in the top level, keep updating the parents 
         while level != 0 {
             let concat = match element_index % 2 {
                 0 => element_hash.clone() + self.get_tree_element(level, element_index + 1),
@@ -114,6 +153,8 @@ impl MerkleTree {
 
 type Input = Vec<Vec<u8>>;
 
+/// Allows the creationg of a Merkle Tree from its base level (or leaves level) which are the hashes of the original
+/// data. This function is useful to extend the Merkle Tree when adding a new element.
 fn create_merkle_tree_from_leaves(leaves: Vec<String>) -> Vec<Vec<String>> {
     let mut merkle_tree = Vec::new();
     merkle_tree.push(leaves.clone());
@@ -129,6 +170,8 @@ fn create_merkle_tree_from_leaves(leaves: Vec<String>) -> Vec<Vec<String>> {
     merkle_tree
 }
 
+/// Allows the creation of a Merkle Tree from a vector of buffers as data elements. If necessary, it will add default
+/// data elements to the leaves level so the amount is a power of two
 pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
     let mut merkle_tree = MerkleTree::default();
     let data_hashes_level = create_data_hashes(inputs);
@@ -140,6 +183,9 @@ pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
     merkle_tree
 }
 
+/// Creates the leaves level from a specific input. Meaning it hashes every data element from the input and returns
+/// a vector of those hashes that can later be used as the lower level of the tree.
+/// Notice that it fills with default elements if necessary to reach an amount that is a power of two.
 fn create_data_hashes(inputs: &Input) -> Vec<String> {
     let mut data_hashes = Vec::new();
 
@@ -158,7 +204,9 @@ fn create_data_hashes(inputs: &Input) -> Vec<String> {
     data_hashes
 }
 
-fn create_new_level(previous_level: &[String]) -> Vec<String> {
+/// Given the previous constructed level of the Merkle Tree it allows to create a parent level for it by concatenating
+/// elements in pairs and hashing the results. It is helpful to construct a Merkle Tree from bottom to top.
+fn create_new_level(previous_level: &Vec<String>) -> Vec<String> {
     let mut index = 0;
     let mut new_level = Vec::new();
 
@@ -172,6 +220,8 @@ fn create_new_level(previous_level: &[String]) -> Vec<String> {
     new_level
 }
 
+/// Given a proof provided by the Merkle Tree it allows to verify that a certain element has been stored at a certain index
+/// in the Merkle Tree.
 pub fn verify_element(
     element_data: Vec<u8>,
     proof: &Vec<String>,

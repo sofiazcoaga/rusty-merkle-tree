@@ -1,11 +1,19 @@
+/// sha256::digest("") - the hash of an empty string
+const DEFAULT_HASH_OF_EMTPY: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
 fn main() {
     println!("Hello, world!");
 }
 
 type MerkleTree = Vec<Vec<String>>;
+// struct MerkleTree {
+//     merkle_tree: Vec<Vec<String>>,
+//     last_original_element: usize
+// }
 type Input = Vec<Vec<u8>>;
 
 pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
+
     let mut merkle_tree: MerkleTree = Vec::new();
     let data_hashes_level = create_data_hashes(inputs);
     merkle_tree.push(data_hashes_level.clone());
@@ -28,6 +36,11 @@ fn create_data_hashes(inputs: &Input) -> Vec<String> {
 
     for i in inputs {
         data_hashes.push(sha256::digest(i));
+    }
+    let data_len = inputs.len();
+    if !data_len.is_power_of_two() {
+        let fill_amount = data_len.next_power_of_two() - data_len;
+        data_hashes.append(&mut vec![DEFAULT_HASH_OF_EMTPY.to_string().clone(); fill_amount]);
     }
 
     data_hashes
@@ -68,7 +81,6 @@ pub fn verify_element(
 
 #[cfg(test)]
 mod test {
-
     use super::*;
 
     #[test]
@@ -104,6 +116,7 @@ mod test {
                 }
             }
         }
+
     }
 
     #[test]
@@ -127,6 +140,17 @@ mod test {
         assert!(!is_element_present);
     }
 
+    #[test]
+    fn fill_until_power_of_two() {
+        let mock_data = create_mock_data_from_strings(vec!["data1", "data2", "data3", "data4", "data5"]);
+        let data_hashes = create_data_hashes(&mock_data);
+        let fill_amount = mock_data.len().next_power_of_two() - mock_data.len();
+        let default_data = data_hashes[data_hashes.len()-fill_amount..data_hashes.len()].to_vec();
+        assert!(default_data.iter().all(|x| *x == DEFAULT_HASH_OF_EMTPY.to_string()));
+        assert_eq!(data_hashes.len(), mock_data.len().next_power_of_two());
+    }
+
+    /// Util Functions
     fn create_mock_data_from_strings(data: Vec<&str>) -> Vec<Vec<u8>> {
         let mut mock_data = Vec::new();
         for e in data {

@@ -66,7 +66,7 @@ mod test {
 
     #[test]
     fn creates_data_hashes() {
-        let mock_data = create_mock_data(vec!["sofi", "fran", "nati", "lola"]);
+        let mock_data = create_mock_data_from_strings(vec!["sofi", "fran", "nati", "lola"]);
         let hashes = create_data_hashes(&mock_data);
         for i in 0..hashes.len() {
             assert_eq!(hashes[i], sha256::digest(mock_data[i].clone()));
@@ -79,7 +79,7 @@ mod test {
         //           R
         //        H5   H6
         //      H1 H2 H3 H4   --> three levels
-        let mock_data = create_mock_data(vec!["pizza", "chocolate", "helado", "coca"]);
+        let mock_data = create_mock_data_from_strings(vec!["pizza", "chocolate", "helado", "coca"]);
         let merkle_tree = create_merkle_tree_from_data(&mock_data);
         assert_eq!(merkle_tree.len(), 3);
         for i in 0..merkle_tree.len() {
@@ -99,7 +99,7 @@ mod test {
 
     #[test]
     fn verify_element_in_tree() {
-        let mock_data = create_mock_data(vec!["12313414", "1345", "124214", "125151"]);
+        let mock_data = create_mock_data_from_strings(vec!["12313414", "1345", "124214", "125151"]);
         let merkle_tree = create_merkle_tree_from_data(&mock_data);
         let mut is_element_present = verify_element(
             mock_data[0].clone(),
@@ -118,7 +118,7 @@ mod test {
         assert!(!is_element_present);
     }
 
-    fn create_mock_data(data: Vec<&str>) -> Vec<Vec<u8>> {
+    fn create_mock_data_from_strings(data: Vec<&str>) -> Vec<Vec<u8>> {
         let mut mock_data = Vec::new();
         for e in data {
             let bytes = e.as_bytes().to_vec();

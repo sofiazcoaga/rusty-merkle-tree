@@ -1,20 +1,20 @@
 /// sha256::digest("") - the hash of an empty string
-const DEFAULT_HASH_OF_EMTPY: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+const DEFAULT_HASH_OF_EMTPY: &str =
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
 fn main() {
     println!("Hello, world!");
 }
 
-//type MerkleTree = Vec<Vec<String>>;
-pub struct MerkleTree {
+struct MerkleTree {
     merkle_tree: Vec<Vec<String>>,
-    last_element: usize
+    last_element: usize,
 }
 impl MerkleTree {
     pub fn new() -> Self {
         MerkleTree {
             merkle_tree: Vec::new(),
-            last_element: 0
+            last_element: 0,
         }
     }
 
@@ -33,10 +33,22 @@ impl MerkleTree {
     pub fn set_last_element(&mut self, element_index: usize) {
         self.last_element = element_index;
     }
+
+    pub fn get_tree_element(&self, level: usize, index: usize) -> &String {
+        &self.merkle_tree[level][index]
+    }
+
+    pub fn last_element_index(&self) -> usize {
+        self.last_element
+    }
+
+    pub fn get_level(&self, level: usize) -> &Vec<String> {
+        &self.merkle_tree[level]
+    }
 }
 type Input = Vec<Vec<u8>>;
 
-pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
+fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
     let mut merkle_tree = MerkleTree::new();
     let data_hashes_level = create_data_hashes(inputs);
     merkle_tree.push_level_back(data_hashes_level.clone());
@@ -51,7 +63,7 @@ pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
         level_len = previous_level.len();
     }
 
-    merkle_tree.set_last_element(inputs.len() -1 );
+    merkle_tree.set_last_element(inputs.len() - 1);
     merkle_tree
 }
 
@@ -64,7 +76,10 @@ fn create_data_hashes(inputs: &Input) -> Vec<String> {
     let data_len = inputs.len();
     if !data_len.is_power_of_two() {
         let fill_amount = data_len.next_power_of_two() - data_len;
-        data_hashes.append(&mut vec![DEFAULT_HASH_OF_EMTPY.to_string().clone(); fill_amount]);
+        data_hashes.append(&mut vec![
+            DEFAULT_HASH_OF_EMTPY.to_string().clone();
+            fill_amount
+        ]);
     }
 
     data_hashes
@@ -84,7 +99,7 @@ fn create_new_level(previous_level: &[String]) -> Vec<String> {
     new_level
 }
 
-pub fn verify_element(
+fn verify_element(
     element_data: Vec<u8>,
     proof: &Vec<String>,
     root: String,
@@ -124,14 +139,14 @@ mod test {
         //        H5   H6
         //      H1 H2 H3 H4   --> three levels
         let mock_data = create_mock_data_from_strings(vec!["pizza", "chocolate", "helado", "coca"]);
-        let merkle_tree_struct = create_merkle_tree_from_data(&mock_data);
-        let merkle_tree = merkle_tree_struct.merkle_tree;
+        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+
         assert_eq!(merkle_tree.len(), 3);
-        assert_eq!(merkle_tree_struct.last_element, mock_data.len()-1);
+        assert_eq!(merkle_tree.last_element_index(), mock_data.len() - 1);
         for i in 0..merkle_tree.len() {
             if i != merkle_tree.len() - 1 {
-                let higher_level = merkle_tree[i].clone();
-                let lower_level = merkle_tree[i + 1].clone();
+                let higher_level = merkle_tree.get_level(i);
+                let lower_level = merkle_tree.get_level(i + 1);
                 for x in 0..higher_level.len() {
                     let l_child = lower_level[x * 2].clone();
                     let r_child = lower_level[x * 2 + 1].clone();
@@ -141,26 +156,31 @@ mod test {
                 }
             }
         }
-
     }
 
     #[test]
     fn verify_element_in_tree() {
         let mock_data = create_mock_data_from_strings(vec!["12313414", "1345", "124214", "125151"]);
-        let merkle_tree_struct = create_merkle_tree_from_data(&mock_data);
-        let merkle_tree = merkle_tree_struct.merkle_tree;
+        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+
         let mut is_element_present = verify_element(
             mock_data[0].clone(),
-            &vec![merkle_tree[2][1].clone(), merkle_tree[1][1].clone()],
-            merkle_tree[0][0].clone(),
+            &vec![
+                merkle_tree.get_tree_element(2, 1).clone(),
+                merkle_tree.get_tree_element(1, 1).clone(),
+            ],
+            merkle_tree.get_tree_element(0, 0).clone(),
             0,
         );
         assert!(is_element_present);
 
         is_element_present = verify_element(
             b"absent_element".to_vec(),
-            &vec![merkle_tree[2][1].clone(), merkle_tree[1][1].clone()],
-            merkle_tree[0][0].clone(),
+            &vec![
+                merkle_tree.get_tree_element(2, 1).clone(),
+                merkle_tree.get_tree_element(1, 1).clone(),
+            ],
+            merkle_tree.get_tree_element(0, 0).clone(),
             0,
         );
         assert!(!is_element_present);
@@ -168,15 +188,19 @@ mod test {
 
     #[test]
     fn fill_until_power_of_two() {
-        let mock_data = create_mock_data_from_strings(vec!["data1", "data2", "data3", "data4", "data5"]);
+        let mock_data =
+            create_mock_data_from_strings(vec!["data1", "data2", "data3", "data4", "data5"]);
         let data_hashes = create_data_hashes(&mock_data);
-        let merkle_tree_struct = create_merkle_tree_from_data(&mock_data);
+        let merkle_tree = create_merkle_tree_from_data(&mock_data);
         let fill_amount = mock_data.len().next_power_of_two() - mock_data.len();
-        let default_data = data_hashes[data_hashes.len()-fill_amount..data_hashes.len()].to_vec();
-        assert_eq!(merkle_tree_struct.last_element, mock_data.len() -1 );
-        assert!(default_data.iter().all(|x| *x == DEFAULT_HASH_OF_EMTPY.to_string()));
+        let default_data = data_hashes[data_hashes.len() - fill_amount..data_hashes.len()].to_vec();
+        assert_eq!(merkle_tree.last_element_index(), mock_data.len() - 1);
+        assert!(
+            default_data
+                .iter()
+                .all(|x| *x == DEFAULT_HASH_OF_EMTPY.to_string())
+        );
         assert_eq!(data_hashes.len(), mock_data.len().next_power_of_two());
-
     }
 
     /// Util Functions

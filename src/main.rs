@@ -47,7 +47,7 @@ fn create_new_level(previous_level: &[String]) -> Vec<String> {
     new_level
 }
 
-fn verify_element(
+pub fn verify_element(
     element_data: Vec<u8>,
     proof: &Vec<String>,
     root: String,
@@ -61,7 +61,7 @@ fn verify_element(
             _ => p.to_owned() + &hash,
         };
         hash = sha256::digest(concat);
-        index = index / 2;
+        index /= 2;
     }
     hash == root
 }

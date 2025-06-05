@@ -54,7 +54,7 @@ impl MerkleTree {
     }
 
     pub fn leaves_amount(&self) -> usize {
-        self.get_level(self.len() - 1).len()
+        self.get_level(self.height() - 1).len()
     }
 
     fn set_element(&mut self, level: usize, index: usize, element: String) {
@@ -82,7 +82,7 @@ impl MerkleTree {
 
         let mut half_merkle_tree = create_merkle_tree_from_leaves(leaves);
         // Push new merkle tree levels into previous one
-        for i in 0..self.len() {
+        for i in 0..self.height() {
             self.merkle_tree[i].append(&mut half_merkle_tree[i]);
         }
 
@@ -95,7 +95,7 @@ impl MerkleTree {
     fn modify_existing_leaf_and_update_parents(&mut self, new_element: Vec<u8>) {
         let mut element_index = self.last_element_index + 1;
         let mut parent_index = element_index / 2;
-        let mut level = self.len() - 1;
+        let mut level = self.height() - 1;
         let mut element_hash = sha256::digest(new_element.clone());
         self.set_element(level, element_index, element_hash.clone());
         while level != 0 {

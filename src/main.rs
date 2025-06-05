@@ -6,15 +6,16 @@ fn main() {
     println!("Hello, world!");
 }
 
-struct MerkleTree {
+#[derive(Default)]
+pub struct MerkleTree {
     merkle_tree: Vec<Vec<String>>,
-    last_element: usize,
+    last_element_index: usize,
 }
 impl MerkleTree {
-    pub fn new() -> Self {
+    pub fn new(merkle_tree: Vec<Vec<String>>, last_element_index: usize) -> Self {
         MerkleTree {
-            merkle_tree: Vec::new(),
-            last_element: 0,
+            merkle_tree,
+            last_element_index,
         }
     }
 
@@ -30,8 +31,8 @@ impl MerkleTree {
         self.merkle_tree.len()
     }
 
-    pub fn set_last_element(&mut self, element_index: usize) {
-        self.last_element = element_index;
+    pub fn set_last_element_index(&mut self, element_index: usize) {
+        self.last_element_index = element_index;
     }
 
     pub fn get_tree_element(&self, level: usize, index: usize) -> &String {
@@ -39,17 +40,22 @@ impl MerkleTree {
     }
 
     pub fn last_element_index(&self) -> usize {
-        self.last_element
+        self.last_element_index
     }
 
     pub fn get_level(&self, level: usize) -> &Vec<String> {
         &self.merkle_tree[level]
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.merkle_tree.is_empty()
+    }
 }
+
 type Input = Vec<Vec<u8>>;
 
-fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
-    let mut merkle_tree = MerkleTree::new();
+pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
+    let mut merkle_tree = MerkleTree::default();
     let data_hashes_level = create_data_hashes(inputs);
     merkle_tree.push_level_back(data_hashes_level.clone());
 
@@ -63,7 +69,7 @@ fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
         level_len = previous_level.len();
     }
 
-    merkle_tree.set_last_element(inputs.len() - 1);
+    merkle_tree.set_last_element_index(inputs.len() - 1);
     merkle_tree
 }
 
@@ -99,7 +105,7 @@ fn create_new_level(previous_level: &[String]) -> Vec<String> {
     new_level
 }
 
-fn verify_element(
+pub fn verify_element(
     element_data: Vec<u8>,
     proof: &Vec<String>,
     root: String,

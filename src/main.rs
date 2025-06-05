@@ -3,7 +3,6 @@ use std::vec;
 /// sha256::digest("") - the hash of an empty string
 const DEFAULT_ZERO_HASH: &str = "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d";
 
-
 fn main() {
     println!("Hello, world!");
 }

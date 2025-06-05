@@ -2,7 +2,7 @@ use std::vec;
 
 /// sha256::digest("") - the hash of an empty string
 const DEFAULT_ZERO_HASH: &str = "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d";
-const DEFAULT_ZERO: [u8; 1] = [0];
+
 
 fn main() {
     println!("Hello, world!");
@@ -97,6 +97,7 @@ impl MerkleTree {
         self.set_last_element_index(next_index);
     }
 
+    #[allow(clippy::needless_range_loop)]
     /// Manages the case when the tree must be extended to add an element.
     fn extend_tree(&mut self, new_element: Vec<u8>) {
         let leaves_amount = self.leaves_amount();
@@ -136,7 +137,7 @@ impl MerkleTree {
         // Insert the new element in the first index that was filled with default data
         self.set_element(level, element_index, element_hash.clone());
 
-        // While we are not in the top level, keep updating the parents 
+        // While we are not in the top level, keep updating the parents
         while level != 0 {
             let concat = match element_index % 2 {
                 0 => element_hash.clone() + self.get_tree_element(level, element_index + 1),
@@ -206,7 +207,7 @@ fn create_data_hashes(inputs: &Input) -> Vec<String> {
 
 /// Given the previous constructed level of the Merkle Tree it allows to create a parent level for it by concatenating
 /// elements in pairs and hashing the results. It is helpful to construct a Merkle Tree from bottom to top.
-fn create_new_level(previous_level: &Vec<String>) -> Vec<String> {
+fn create_new_level(previous_level: &[String]) -> Vec<String> {
     let mut index = 0;
     let mut new_level = Vec::new();
 

@@ -152,6 +152,32 @@ impl MerkleTree {
             parent_index = element_index / 2;
         }
     }
+
+    /// Provides an vector of hashes known as "proof" that give a user the possibility to verify
+    /// that an element in a specific index is a part of the tree. This pairs with the `verify_element`
+    /// function to prove an element is a part of a tree.
+    pub fn get_merkle_proof(&self, element_index: usize) -> Vec<String> {
+        let mut proof = Vec::new();
+        let mut element_index = element_index;
+        let mut level = self.height() - 1;
+
+        while level != 0 {
+            match element_index % 2 {
+                0 => element_index += 1,
+                _ => element_index -= 1,
+            }
+            let proof_element = self.get_tree_element(level, element_index).clone();
+            proof.push(proof_element);
+            level -= 1;
+            element_index /= 2;
+        }
+
+        proof
+    }
+
+    pub fn get_root(&self) -> String {
+        self.get_tree_element(0, 0).clone()
+    }
 }
 
 type Input = Vec<Vec<u8>>;
@@ -277,12 +303,10 @@ mod test {
         let mock_data = create_mock_data_from_strings(vec!["12313414", "1345", "124214", "125151"]);
         let merkle_tree = create_merkle_tree_from_data(&mock_data);
 
+        let proof = merkle_tree.get_merkle_proof(0);
         let mut is_element_present = verify_element(
             mock_data[0].clone(),
-            &vec![
-                merkle_tree.get_tree_element(2, 1).clone(),
-                merkle_tree.get_tree_element(1, 1).clone(),
-            ],
+            &proof,
             merkle_tree.get_tree_element(0, 0).clone(),
             0,
         );
@@ -290,10 +314,7 @@ mod test {
 
         is_element_present = verify_element(
             b"absent_element".to_vec(),
-            &vec![
-                merkle_tree.get_tree_element(2, 1).clone(),
-                merkle_tree.get_tree_element(1, 1).clone(),
-            ],
+            &proof,
             merkle_tree.get_tree_element(0, 0).clone(),
             0,
         );
@@ -315,6 +336,31 @@ mod test {
                 .all(|x| *x == DEFAULT_ZERO_HASH.to_string())
         );
         assert_eq!(data_hashes.len(), mock_data.len().next_power_of_two());
+    }
+
+    #[test]
+    fn get_merkle_proof() {
+        let mock_data =
+            create_mock_data_from_strings(vec!["data1", "data2", "data3", "data4", "data5"]);
+        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+        // We want to verify that "data3" is a part of the tree
+        let merkle_proof = merkle_tree.get_merkle_proof(2);
+        assert_eq!(
+            merkle_proof.len(),
+            merkle_tree.leaves_amount().ilog2() as usize
+        );
+        assert!(verify_element(
+            mock_data[2].clone(),
+            &merkle_proof,
+            merkle_tree.get_root(),
+            2
+        ));
+        assert!(!verify_element(
+            mock_data[3].clone(),
+            &merkle_proof,
+            merkle_tree.get_root(),
+            3
+        ));
     }
 
     // Add an element without needing to extend the tree

@@ -16,8 +16,6 @@ pub struct MerkleTree {
     last_element_index: usize,
 }
 impl MerkleTree {
-
-
     pub fn new(merkle_tree: HashTree, last_element_index: usize) -> Self {
         MerkleTree {
             merkle_tree,
@@ -155,7 +153,7 @@ impl MerkleTree {
         }
     }
 
-      pub fn get_merkle_proof(&self, element_index: usize) -> Vec<String> {
+    pub fn get_merkle_proof(&self, element_index: usize) -> Vec<String> {
         let mut proof = Vec::new();
         let mut element_index = element_index;
         let mut level = self.height() - 1;
@@ -173,7 +171,6 @@ impl MerkleTree {
 
         proof
     }
-
 }
 
 type Input = Vec<Vec<u8>>;
@@ -265,7 +262,6 @@ pub fn verify_element(
     }
     hash == root
 }
-
 
 #[cfg(test)]
 mod test {

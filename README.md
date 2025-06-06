@@ -22,10 +22,32 @@ A Merkle Tree (also called Hash Tree) is a binary tree where every leaf is the h
 
 # Creating a Merkle Tree
 In order to create a Merkle Tree, call the function:
-`create_merkle_tree_from_data()` that takes a `Vec<Vec<u8>>` as an input. This means it takes a vector of buffers. 
+`create_merkle_tree_from_data()` that takes a `Vec<Vec<u8>>` as an input. This means it takes a vector of buffers that can be anything in its content.
+
+Let's say we want to store the words "Hello" and "World" in a Merkle Tree, we could do something like:
+```rust
+let hello_as_bytes = b"Hello".to_vec();
+let world_as_bytes = b"World".to_vec();
+// Consider: `unwrap()` is not safe, only use if certain that the result of the function is Ok().
+// This is only for example purposes.
+let merkle_tree = create_merkle_tree_from_data(vec![hello_as_bytes, world_as_bytes]).unwrap();
+```
 
 # Adding an element to a Merkle Tree
+Let's say that now that we have our Merkle Tree we want to add a new element to it. We can do so by calling:
+```rust
+let exclamation_mark_as_bytes = b"!".to_vec();
+merkle_tree.add_element(exclamation_mark_as_bytes);
+```
 
 # Generating a Merkle Proof
+A Merkle Tree can provide us with a so called _merkle proof_ which is basically an array of hashes that another function can use to verify that a certain element is a part of the tree without having the whole tree.
+In order to ask the tree for this proof we need to know the index where the data has been stored. With that we can call the following method:
+```rust
+let hello_index = 0;
+let hello_proof = merkle_tree.get_merkle_proof(hello_index);
+```
+After that, let's see how we can use the merkle proof to verify the element is a part of the tree.
 
 # Verifying an element is contained in the tree
+

@@ -1,8 +1,10 @@
-use std::vec;
 use lazy_static::lazy_static;
+use std::vec;
 
 // The hash of the zero value
-lazy_static! { static ref DEFAULT_ZERO_HASH: String = sha256::digest(&[0]); }
+lazy_static! {
+    static ref DEFAULT_ZERO_HASH: String = sha256::digest(&[0]);
+}
 
 fn main() {
     println!("Hello, world!");

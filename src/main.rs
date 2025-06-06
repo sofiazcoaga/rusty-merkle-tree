@@ -338,16 +338,24 @@ mod test {
     #[test]
     fn add_element_in_new_position() {
         // Amount of elements is 8 which is 2^3 and tree will no need default data
-        let mock_data = create_mock_data_from_strings(vec!["123", "1234", "12345", "123456", "1234567", "12312458", "1241423", "141251"]);
+        let mock_data = create_mock_data_from_strings(vec![
+            "123", "1234", "12345", "123456", "1234567", "12312458", "1241423", "141251",
+        ]);
         let mut merkle_tree = create_merkle_tree_from_data(&mock_data);
         let previous_height = merkle_tree.height();
         assert_eq!(merkle_tree.leaves_amount(), mock_data.len());
         merkle_tree.add_element(b"295873459817".to_vec());
         // Make sure the tree had to fill data
         let new_amount_of_elements = mock_data.len() + 1; // Include the new element
-        assert_ne!(new_amount_of_elements, new_amount_of_elements.next_power_of_two());
-        assert_eq!(merkle_tree.leaves_amount(), new_amount_of_elements.next_power_of_two());
-        assert_eq!(merkle_tree.height(), previous_height + 1); 
+        assert_ne!(
+            new_amount_of_elements,
+            new_amount_of_elements.next_power_of_two()
+        );
+        assert_eq!(
+            merkle_tree.leaves_amount(),
+            new_amount_of_elements.next_power_of_two()
+        );
+        assert_eq!(merkle_tree.height(), previous_height + 1);
         assert_merkle_tree_is_consistent(merkle_tree);
     }
 

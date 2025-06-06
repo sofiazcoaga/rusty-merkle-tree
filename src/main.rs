@@ -168,7 +168,7 @@ impl MerkleTree {
             }
             let proof_element = self.get_tree_element(level, element_index).clone();
             proof.push(proof_element);
-            level = level - 1;
+            level -= 1;
             element_index /= 2;
         }
 

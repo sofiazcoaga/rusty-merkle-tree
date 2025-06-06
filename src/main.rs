@@ -340,14 +340,27 @@ mod test {
 
     #[test]
     fn get_merkle_proof() {
-        let mock_data = create_mock_data_from_strings(vec!["data1", "data2", "data3", "data4", "data5"]);
+        let mock_data =
+            create_mock_data_from_strings(vec!["data1", "data2", "data3", "data4", "data5"]);
         let merkle_tree = create_merkle_tree_from_data(&mock_data);
         // We want to verify that "data3" is a part of the tree
         let merkle_proof = merkle_tree.get_merkle_proof(2);
-        assert_eq!(merkle_proof.len(), merkle_tree.leaves_amount().ilog2() as usize);
-        assert!(verify_element(mock_data[2].clone(), &merkle_proof, merkle_tree.get_root(), 2));
-        assert!(!verify_element(mock_data[3].clone(), &merkle_proof, merkle_tree.get_root(), 3));
-
+        assert_eq!(
+            merkle_proof.len(),
+            merkle_tree.leaves_amount().ilog2() as usize
+        );
+        assert!(verify_element(
+            mock_data[2].clone(),
+            &merkle_proof,
+            merkle_tree.get_root(),
+            2
+        ));
+        assert!(!verify_element(
+            mock_data[3].clone(),
+            &merkle_proof,
+            merkle_tree.get_root(),
+            3
+        ));
     }
 
     // Add an element without needing to extend the tree

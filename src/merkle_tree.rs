@@ -9,19 +9,24 @@ lazy_static! {
 type Input = Vec<Vec<u8>>;
 type HashTree = Vec<Vec<String>>;
 
-#[derive(Default)]
+#[derive(Debug, PartialEq)]
+pub enum MerkleTreeError {
+    DataLengthIsZero,
+    DataIsEmpty,
+}
+
 pub struct MerkleTree {
     merkle_tree: HashTree,
     last_element_index: usize,
 }
 impl MerkleTree {
-    pub fn new(merkle_tree: HashTree, last_element_index: usize) -> Self {
-        MerkleTree {
-            merkle_tree,
-            last_element_index,
+    /// Create a default Merkle Tree
+    fn default() -> Self {
+        Self {
+            merkle_tree: Vec::new(),
+            last_element_index: 0,
         }
     }
-
     /// Returns the height of the Merkle Tree, meaning the amount of levels.
     pub fn height(&self) -> usize {
         self.merkle_tree.len()
@@ -89,7 +94,10 @@ impl MerkleTree {
     ///             H3  H4      H5 H6      H9 H10    H11 H12            everything under R2 is the new subtree and H9 is the hash of the new element
     ///                                                                 (H10, H11, H12 are default data) and R' is the new calculated root (hash of (R1+R2))
     ///
-    pub fn add_element(&mut self, new_element: Vec<u8>) {
+    pub fn add_element(&mut self, new_element: Vec<u8>) -> Result<(), MerkleTreeError> {
+        if new_element.is_empty() {
+            return Err(MerkleTreeError::DataIsEmpty);
+        }
         let next_index = self.last_element_index() + 1;
 
         // Contemplates Case 2. The element requires a new index past the existing ones and the tree must be extended.
@@ -103,6 +111,8 @@ impl MerkleTree {
 
         // After any of the cases, the last index with real data must be updated.
         self.set_last_element_index(next_index);
+
+        Ok(())
     }
 
     #[allow(clippy::needless_range_loop)] // Allow this to make code more understandable
@@ -184,7 +194,10 @@ impl MerkleTree {
 
 /// Allows the creation of a Merkle Tree from a vector of buffers as data elements. If necessary, it will add default
 /// data elements to the leaves level so the amount is a power of two
-pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
+pub fn create_merkle_tree_from_data(inputs: &Input) -> Result<MerkleTree, MerkleTreeError> {
+    if inputs.is_empty() {
+        return Err(MerkleTreeError::DataLengthIsZero);
+    }
     let mut merkle_tree = MerkleTree::default();
     let data_hashes_level = create_data_hashes(inputs);
 
@@ -192,7 +205,7 @@ pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
 
     merkle_tree.merkle_tree = tree;
     merkle_tree.set_last_element_index(inputs.len() - 1);
-    merkle_tree
+    Ok(merkle_tree)
 }
 
 /// Allows the creation of a Merkle Tree from its base level (or leaves level) which are the hashes of the original
@@ -272,6 +285,8 @@ pub fn verify_element(
 
 #[cfg(test)]
 mod test {
+    use crate::merkle_tree;
+
     use super::*;
 
     #[test]
@@ -291,7 +306,7 @@ mod test {
         //        H5   H6
         //      H1 H2 H3 H4   --> three levels
         let mock_data = create_mock_data_from_strings(vec!["pizza", "chocolate", "helado", "coca"]);
-        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+        let merkle_tree = create_merkle_tree_from_data(&mock_data).unwrap();
 
         assert_eq!(merkle_tree.height(), 3);
         assert_eq!(merkle_tree.last_element_index(), mock_data.len() - 1);
@@ -299,9 +314,18 @@ mod test {
     }
 
     #[test]
+    fn cannot_create_an_empty_merkle_tree() {
+        let empty_data: Vec<Vec<u8>> = Vec::new();
+        let merkle_tree = create_merkle_tree_from_data(&empty_data);
+        assert_eq!(
+            merkle_tree.err().unwrap(),
+            MerkleTreeError::DataLengthIsZero
+        );
+    }
+    #[test]
     fn verify_element_in_tree() {
         let mock_data = create_mock_data_from_strings(vec!["12313414", "1345", "124214", "125151"]);
-        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+        let merkle_tree = create_merkle_tree_from_data(&mock_data).unwrap();
 
         let proof = merkle_tree.get_merkle_proof(0);
         let mut is_element_present = verify_element(
@@ -326,7 +350,7 @@ mod test {
         let mock_data =
             create_mock_data_from_strings(vec!["data1", "data2", "data3", "data4", "data5"]);
         let data_hashes = create_data_hashes(&mock_data);
-        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+        let merkle_tree = create_merkle_tree_from_data(&mock_data).unwrap();
         let fill_amount = mock_data.len().next_power_of_two() - mock_data.len();
         let default_data = data_hashes[data_hashes.len() - fill_amount..data_hashes.len()].to_vec();
         assert_eq!(merkle_tree.last_element_index(), mock_data.len() - 1);
@@ -342,7 +366,7 @@ mod test {
     fn get_merkle_proof() {
         let mock_data =
             create_mock_data_from_strings(vec!["data1", "data2", "data3", "data4", "data5"]);
-        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+        let merkle_tree = create_merkle_tree_from_data(&mock_data).unwrap();
         // We want to verify that "data3" is a part of the tree
         let merkle_proof = merkle_tree.get_merkle_proof(2);
         assert_eq!(
@@ -367,13 +391,14 @@ mod test {
     #[test]
     fn add_element_in_existing_position() {
         let mock_data = create_mock_data_from_strings(vec!["12345", "6789", "3645738"]);
-        let mut merkle_tree = create_merkle_tree_from_data(&mock_data);
+        let mut merkle_tree = create_merkle_tree_from_data(&mock_data).unwrap();
         // Should have completed data to four
         assert_eq!(
             merkle_tree.leaves_amount(),
             mock_data.len().next_power_of_two()
         );
-        merkle_tree.add_element(b"128746124".to_vec());
+        let add_element_result = merkle_tree.add_element(b"128746124".to_vec());
+        assert!(add_element_result.is_ok());
         // Should still have same amount of elements
         assert_eq!(
             merkle_tree.leaves_amount(),
@@ -390,10 +415,11 @@ mod test {
         let mock_data = create_mock_data_from_strings(vec![
             "123", "1234", "12345", "123456", "1234567", "12312458", "1241423", "141251",
         ]);
-        let mut merkle_tree = create_merkle_tree_from_data(&mock_data);
+        let mut merkle_tree = create_merkle_tree_from_data(&mock_data).unwrap();
         let previous_height = merkle_tree.height();
         assert_eq!(merkle_tree.leaves_amount(), mock_data.len());
-        merkle_tree.add_element(b"295873459817".to_vec());
+        let add_element_result = merkle_tree.add_element(b"295873459817".to_vec());
+        assert!(add_element_result.is_ok());
         // Make sure the tree had to fill data
         let new_amount_of_elements = mock_data.len() + 1; // Include the new element
         assert_ne!(
@@ -408,6 +434,13 @@ mod test {
         assert_merkle_tree_is_consistent(merkle_tree);
     }
 
+    #[test]
+    fn cannot_add_empty_data() {
+        let mut merkle_tree = create_merkle_tree_from_data(&vec![b"12323".to_vec()]).unwrap();
+        let add_result = merkle_tree.add_element(Vec::new());
+        assert!(add_result.is_err());
+        assert_eq!(add_result.err().unwrap(), MerkleTreeError::DataIsEmpty);
+    }
     /// Util Functions
     fn create_mock_data_from_strings(data: Vec<&str>) -> Vec<Vec<u8>> {
         let mut mock_data = Vec::new();

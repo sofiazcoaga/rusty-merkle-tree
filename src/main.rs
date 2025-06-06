@@ -12,11 +12,11 @@ fn main() {
 
 #[derive(Default)]
 pub struct MerkleTree {
-    merkle_tree: Vec<Vec<String>>,
+    merkle_tree: HashTree,
     last_element_index: usize,
 }
 impl MerkleTree {
-    pub fn new(merkle_tree: Vec<Vec<String>>, last_element_index: usize) -> Self {
+    pub fn new(merkle_tree: HashTree, last_element_index: usize) -> Self {
         MerkleTree {
             merkle_tree,
             last_element_index,

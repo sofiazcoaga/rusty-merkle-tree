@@ -155,7 +155,7 @@ impl MerkleTree {
 
     /// Provides an vector of hashes known as "proof" that give a user the possibility to verify
     /// that an element in a specific index is a part of the tree. This pairs with the `verify_element`
-    /// function to prove an element is a part of a tree. 
+    /// function to prove an element is a part of a tree.
     pub fn get_merkle_proof(&self, element_index: usize) -> Vec<String> {
         let mut proof = Vec::new();
         let mut element_index = element_index;
@@ -173,6 +173,10 @@ impl MerkleTree {
         }
 
         proof
+    }
+
+    pub fn get_root(&self) -> String {
+        self.get_tree_element(0, 0).clone()
     }
 }
 
@@ -332,6 +336,18 @@ mod test {
                 .all(|x| *x == DEFAULT_ZERO_HASH.to_string())
         );
         assert_eq!(data_hashes.len(), mock_data.len().next_power_of_two());
+    }
+
+    #[test]
+    fn get_merkle_proof() {
+        let mock_data = create_mock_data_from_strings(vec!["data1", "data2", "data3", "data4", "data5"]);
+        let merkle_tree = create_merkle_tree_from_data(&mock_data);
+        // We want to verify that "data3" is a part of the tree
+        let merkle_proof = merkle_tree.get_merkle_proof(2);
+        assert_eq!(merkle_proof.len(), merkle_tree.leaves_amount().ilog2() as usize);
+        assert!(verify_element(mock_data[2].clone(), &merkle_proof, merkle_tree.get_root(), 2));
+        assert!(!verify_element(mock_data[3].clone(), &merkle_proof, merkle_tree.get_root(), 3));
+
     }
 
     // Add an element without needing to extend the tree

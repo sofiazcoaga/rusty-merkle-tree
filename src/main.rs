@@ -116,11 +116,11 @@ impl MerkleTree {
         leaves.append(&mut vec![DEFAULT_ZERO_HASH.to_string(); fill_amount]);
 
         // Create a new merkle tree for the new data subset
-        let mut half_merkle_tree = create_hash_tree_from_leaves(leaves);
+        let half_merkle_tree = create_hash_tree_from_leaves(leaves);
 
         // Append the new merkle tree's levels to the previous tree
         for i in 0..self.height() {
-            self.merkle_tree[i].append(&mut half_merkle_tree[i]);
+            self.merkle_tree[i].extend_from_slice(&half_merkle_tree[i]);
         }
 
         // Obtain the new root from the roots of the two subtrees.

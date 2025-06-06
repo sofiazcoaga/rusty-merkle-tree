@@ -96,7 +96,7 @@ impl MerkleTree {
         self.set_last_element_index(next_index);
     }
 
-    #[allow(clippy::needless_range_loop)]
+    #[allow(clippy::needless_range_loop)] // Allow this to make code more understandable
     /// Manages the case when the tree must be extended to add an element.
     fn extend_tree(&mut self, new_element: Vec<u8>) {
         let leaves_amount = self.leaves_amount();
@@ -266,19 +266,7 @@ mod test {
 
         assert_eq!(merkle_tree.height(), 3);
         assert_eq!(merkle_tree.last_element_index(), mock_data.len() - 1);
-        for i in 0..merkle_tree.height() {
-            if i != merkle_tree.height() - 1 {
-                let higher_level = merkle_tree.get_level(i);
-                let lower_level = merkle_tree.get_level(i + 1);
-                for x in 0..higher_level.len() {
-                    let l_child = lower_level[x * 2].clone();
-                    let r_child = lower_level[x * 2 + 1].clone();
-                    let concat_children = l_child + &r_child;
-                    let hashed_children = sha256::digest(concat_children);
-                    assert_eq!(higher_level[x], hashed_children);
-                }
-            }
-        }
+        assert_merkle_tree_is_consistent(merkle_tree);
     }
 
     #[test]
@@ -326,24 +314,41 @@ mod test {
         assert_eq!(data_hashes.len(), mock_data.len().next_power_of_two());
     }
 
+    // Add an element without needing to extend the tree
     #[test]
-    fn add_an_element_1() {
+    fn add_element_in_existing_position() {
         let mock_data = create_mock_data_from_strings(vec!["12345", "6789", "3645738"]);
         let mut merkle_tree = create_merkle_tree_from_data(&mock_data);
-        // should have completed data to four
+        // Should have completed data to four
         assert_eq!(
             merkle_tree.leaves_amount(),
             mock_data.len().next_power_of_two()
         );
         merkle_tree.add_element(b"128746124".to_vec());
-        // should still have same amount of elements
+        // Should still have same amount of elements
         assert_eq!(
             merkle_tree.leaves_amount(),
             mock_data.len().next_power_of_two()
         );
 
+        assert_merkle_tree_is_consistent(merkle_tree);
+    }
+
+    // Add an element by extending the tree
+    #[test]
+    fn add_element_in_new_position() {
+        // Amount of elements is 8 which is 2^3 and tree will no need default data
+        let mock_data = create_mock_data_from_strings(vec!["123", "1234", "12345", "123456", "1234567", "12312458", "1241423", "141251"]);
+        let mut merkle_tree = create_merkle_tree_from_data(&mock_data);
+        let previous_height = merkle_tree.height();
+        assert_eq!(merkle_tree.leaves_amount(), mock_data.len());
         merkle_tree.add_element(b"295873459817".to_vec());
-        assert_eq!(merkle_tree.leaves_amount(), 8);
+        // Make sure the tree had to fill data
+        let new_amount_of_elements = mock_data.len() + 1; // Include the new element
+        assert_ne!(new_amount_of_elements, new_amount_of_elements.next_power_of_two());
+        assert_eq!(merkle_tree.leaves_amount(), new_amount_of_elements.next_power_of_two());
+        assert_eq!(merkle_tree.height(), previous_height + 1); 
+        assert_merkle_tree_is_consistent(merkle_tree);
     }
 
     /// Util Functions
@@ -354,5 +359,23 @@ mod test {
             mock_data.push(bytes);
         }
         mock_data
+    }
+
+    /// Util function to assert every level of the tree is well constructed
+    /// and every element is a hash of its children's concatenation hash
+    fn assert_merkle_tree_is_consistent(merkle_tree: MerkleTree) {
+        for i in 0..merkle_tree.height() {
+            if i != merkle_tree.height() - 1 {
+                let higher_level = merkle_tree.get_level(i);
+                let lower_level = merkle_tree.get_level(i + 1);
+                for x in 0..higher_level.len() {
+                    let l_child = lower_level[x * 2].clone();
+                    let r_child = lower_level[x * 2 + 1].clone();
+                    let concat_children = l_child + &r_child;
+                    let hashed_children = sha256::digest(concat_children);
+                    assert_eq!(higher_level[x], hashed_children);
+                }
+            }
+        }
     }
 }

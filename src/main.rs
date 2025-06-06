@@ -114,7 +114,7 @@ impl MerkleTree {
         leaves.append(&mut vec![DEFAULT_ZERO_HASH.to_string(); fill_amount]);
 
         // Create a new merkle tree for the new data subset
-        let mut half_merkle_tree = create_merkle_tree_from_leaves(leaves);
+        let mut half_merkle_tree = create_hash_tree_from_leaves(leaves);
 
         // Append the new merkle tree's levels to the previous tree
         for i in 0..self.height() {
@@ -153,10 +153,10 @@ impl MerkleTree {
 }
 
 type Input = Vec<Vec<u8>>;
-
+type HashTree = Vec<Vec<String>>;
 /// Allows the creation of a Merkle Tree from its base level (or leaves level) which are the hashes of the original
 /// data. This function is useful to extend the Merkle Tree when adding a new element.
-fn create_merkle_tree_from_leaves(leaves: Vec<String>) -> Vec<Vec<String>> {
+fn create_hash_tree_from_leaves(leaves: Vec<String>) -> HashTree {
     let mut merkle_tree = Vec::new();
     merkle_tree.push(leaves.clone());
     let mut previous_level = leaves;
@@ -177,7 +177,7 @@ pub fn create_merkle_tree_from_data(inputs: &Input) -> MerkleTree {
     let mut merkle_tree = MerkleTree::default();
     let data_hashes_level = create_data_hashes(inputs);
 
-    let tree = create_merkle_tree_from_leaves(data_hashes_level);
+    let tree = create_hash_tree_from_leaves(data_hashes_level);
 
     merkle_tree.merkle_tree = tree;
     merkle_tree.set_last_element_index(inputs.len() - 1);

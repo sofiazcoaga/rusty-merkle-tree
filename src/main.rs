@@ -153,6 +153,9 @@ impl MerkleTree {
         }
     }
 
+    /// Provides an vector of hashes known as "proof" that give a user the possibility to verify
+    /// that an element in a specific index is a part of the tree. This pairs with the `verify_element`
+    /// function to prove an element is a part of a tree. 
     pub fn get_merkle_proof(&self, element_index: usize) -> Vec<String> {
         let mut proof = Vec::new();
         let mut element_index = element_index;

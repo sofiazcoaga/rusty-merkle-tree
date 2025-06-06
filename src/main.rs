@@ -154,7 +154,7 @@ impl MerkleTree {
 
 type Input = Vec<Vec<u8>>;
 
-/// Allows the creationg of a Merkle Tree from its base level (or leaves level) which are the hashes of the original
+/// Allows the creation of a Merkle Tree from its base level (or leaves level) which are the hashes of the original
 /// data. This function is useful to extend the Merkle Tree when adding a new element.
 fn create_merkle_tree_from_leaves(leaves: Vec<String>) -> Vec<Vec<String>> {
     let mut merkle_tree = Vec::new();

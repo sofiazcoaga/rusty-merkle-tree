@@ -30,6 +30,7 @@ pub fn main() {
     println!("\nOur calculated Merkle Proof is: {:?}", proof.clone());
     println!("\nThe length of the proof is {:?} because for a {:?} amount of leaves we need log2({:?}) elements in the proof to verify the element.", proof.len(), merkle_tree.leaves_amount(), merkle_tree.leaves_amount());
     // Verify the element
+    println!("Now we use this proof to verify the element..."); 
     let result = verify_element(my_data[element_index].clone(), &proof, merkle_tree.get_root(),element_index);
     assert!(result);
     println!("The element was verified!\n");

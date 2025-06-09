@@ -20,8 +20,8 @@ The project contains a Makefile to allow easy interaction. The available command
 A Merkle Tree (also called Hash Tree) is a binary tree where every leaf is the hash of a data element and every parent node is a hash of its two children (unified by some operation as it could be concatenation).
 
 # Creating a Merkle Tree
-In order to create a Merkle Tree, call the function:
-`create_merkle_tree_from_data()` that takes a `Vec<Vec<u8>>` as an input. This means it takes a vector of buffers that can be anything in its content.
+In order to create a Merkle Tree, call the static method:
+`new_from_data()` that takes a `Vec<Vec<u8>>` as an input. This means it takes a vector of buffers that can be anything in its content.
 
 Let's say we want to store the words "Hello" and "World" in a Merkle Tree, we could do something like:
 ```rust
@@ -29,7 +29,7 @@ let hello_as_bytes = b"Hello".to_vec();
 let world_as_bytes = b"World".to_vec();
 // Consider: `unwrap()` is not safe, only use if certain that the result of the function is Ok().
 // This is only for example purposes.
-let merkle_tree = create_merkle_tree_from_data(vec![hello_as_bytes, world_as_bytes]).unwrap();
+let merkle_tree = MerkleTree::new_from_data(vec![hello_as_bytes, world_as_bytes]).unwrap();
 ```
 
 # Adding an element to a Merkle Tree

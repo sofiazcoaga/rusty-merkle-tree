@@ -1,6 +1,4 @@
-use rusty_merkle_tree::{create_merkle_tree_from_data, verify_element, MerkleTree};
-
-
+use rusty_merkle_tree::{MerkleTree, verify_element};
 
 pub fn main() {
     // Create a Merkle Tree with 3 data elements will generate a tree with 4 leaves
@@ -18,7 +16,7 @@ pub fn main() {
     }
 
     // Create Merkle Tree
-    let mut merkle_tree = create_merkle_tree_from_data(&my_data).unwrap();
+    let mut merkle_tree = MerkleTree::new_from_data(&my_data).unwrap();
     println!("\n The initial Merkle tree is (hashes can be verified in leaves): ");
     print_three_level_tree(&merkle_tree);
 

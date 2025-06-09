@@ -5,7 +5,7 @@ build:
 	cargo build
 
 clean:
-	rm -rf target
+	cargo clean
 
 example:
 	cargo build

@@ -9,18 +9,24 @@ lazy_static! {
 type Input = Vec<Vec<u8>>;
 type HashTree = Vec<Vec<String>>;
 
+/// Errors related to input data.
 #[derive(Debug, PartialEq)]
 pub enum MerkleTreeError {
+    /// Caused by an empty array passed as input to create a Merkle Tree.
     DataLengthIsZero,
+    /// Caused by empty data passed as input to extend the tree.
     DataIsEmpty,
 }
 
+/// Structure for a Merkle Tree where `merkle_tree` field is the actual representation of the tree and
+/// the `last_element_index` field indicates the last leaf that contains real data (and not default fill data).
+/// Take into account that in this model each vector represents a level of the tree, being the 0 index the root level.
 pub struct MerkleTree {
     merkle_tree: HashTree,
     last_element_index: usize,
 }
 impl MerkleTree {
-    /// Create a default Merkle Tree
+    /// Create a default Merkle Tree - the existing trait is not used to mantain this function private. 
     fn default() -> Self {
         Self {
             merkle_tree: Vec::new(),

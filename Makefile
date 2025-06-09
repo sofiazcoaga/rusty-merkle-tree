@@ -7,6 +7,9 @@ build:
 clean:
 	rm -rf target
 
-run:
+example:
 	cargo build
 	cargo run
+
+doc:
+	cargo doc --open --no-deps

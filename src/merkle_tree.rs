@@ -26,7 +26,7 @@ pub struct MerkleTree {
     last_element_index: usize,
 }
 impl MerkleTree {
-    /// Create a default Merkle Tree - the existing trait is not used to mantain this function private. 
+    /// Create a default Merkle Tree - the existing trait is not used to mantain this function private.
     fn default() -> Self {
         Self {
             merkle_tree: Vec::new(),
@@ -55,7 +55,7 @@ impl MerkleTree {
     }
 
     /// Returns an immutable reference to an entire level of the tree.
-    pub fn get_level(&self, level: usize) -> &Vec<String> {
+    pub fn get_level(&self, level: usize) -> &[String] {
         &self.merkle_tree[level]
     }
 
@@ -272,7 +272,7 @@ fn create_new_level(previous_level: &[String]) -> Vec<String> {
 /// in the Merkle Tree.
 pub fn verify_element(
     element_data: Vec<u8>,
-    proof: &Vec<String>,
+    proof: &[String],
     root: String,
     element_index: usize,
 ) -> bool {

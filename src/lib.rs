@@ -7,7 +7,7 @@ use std::vec;
 
 // The hash of the zero value
 lazy_static! {
-    static ref DEFAULT_ZERO_HASH: GenericArray<u8, U32> = Sha256::digest([0]);
+    static ref DEFAULT_EMPTY_HASH: GenericArray<u8, U32> = Sha256::digest([]);
 }
 
 type Input = Vec<Vec<u8>>;
@@ -45,6 +45,10 @@ impl MerkleTree {
         if inputs.is_empty() {
             return Err(MerkleTreeError::DataLengthIsZero);
         }
+        if !inputs.iter().all(|x| !x.is_empty()) {
+            return Err(MerkleTreeError::DataIsEmpty);
+        }
+
         let mut merkle_tree = MerkleTree::default();
         let data_hashes_level: Vec<Hash> = create_data_hashes(inputs);
 
@@ -157,7 +161,7 @@ impl MerkleTree {
 
         // Create the leaves level of the new subtree
         let mut leaves = vec![Sha256::digest(new_element)];
-        leaves.append(&mut vec![*DEFAULT_ZERO_HASH; fill_amount]);
+        leaves.append(&mut vec![*DEFAULT_EMPTY_HASH; fill_amount]);
 
         // Create a new merkle tree for the new data subset
         let half_merkle_tree = create_hash_tree_from_leaves(leaves);
@@ -257,7 +261,7 @@ fn create_data_hashes(inputs: &Input) -> Vec<Hash> {
     let data_len = inputs.len();
     if !data_len.is_power_of_two() {
         let fill_amount = data_len.next_power_of_two() - data_len;
-        data_hashes.append(&mut vec![*DEFAULT_ZERO_HASH; fill_amount]);
+        data_hashes.append(&mut vec![*DEFAULT_EMPTY_HASH; fill_amount]);
     }
 
     data_hashes
@@ -286,7 +290,10 @@ pub fn verify_element(
     proof: &[Hash],
     root: Hash,
     element_index: usize,
-) -> bool {
+) -> Result<bool, MerkleTreeError> {
+    if element_data.is_empty() {
+        return Err(MerkleTreeError::DataIsEmpty);
+    }
     let mut hash = Sha256::digest(element_data);
     let mut index = element_index;
     for p in proof {
@@ -297,7 +304,7 @@ pub fn verify_element(
         hash = Sha256::digest(concat);
         index /= 2;
     }
-    hash == root
+    Ok(hash == root)
 }
 
 #[cfg(test)]
@@ -349,7 +356,8 @@ mod test {
             &proof,
             merkle_tree.get_tree_element(0, 0).clone(),
             0,
-        );
+        )
+        .unwrap();
         assert!(is_element_present);
 
         is_element_present = verify_element(
@@ -357,7 +365,8 @@ mod test {
             &proof,
             merkle_tree.get_tree_element(0, 0).clone(),
             0,
-        );
+        )
+        .unwrap();
         assert!(!is_element_present);
     }
 
@@ -370,7 +379,7 @@ mod test {
         let fill_amount = mock_data.len().next_power_of_two() - mock_data.len();
         let default_data = data_hashes[data_hashes.len() - fill_amount..data_hashes.len()].to_vec();
         assert_eq!(merkle_tree.last_element_index(), mock_data.len() - 1);
-        assert!(default_data.iter().all(|x| *x == *DEFAULT_ZERO_HASH));
+        assert!(default_data.iter().all(|x| *x == *DEFAULT_EMPTY_HASH));
         assert_eq!(data_hashes.len(), mock_data.len().next_power_of_two());
     }
 
@@ -385,18 +394,24 @@ mod test {
             merkle_proof.len(),
             merkle_tree.leaves_amount().ilog2() as usize
         );
-        assert!(verify_element(
-            mock_data[2].clone(),
-            &merkle_proof,
-            merkle_tree.get_root(),
-            2
-        ));
-        assert!(!verify_element(
-            mock_data[3].clone(),
-            &merkle_proof,
-            merkle_tree.get_root(),
-            3
-        ));
+        assert!(
+            verify_element(
+                mock_data[2].clone(),
+                &merkle_proof,
+                merkle_tree.get_root(),
+                2
+            )
+            .unwrap()
+        );
+        assert!(
+            !verify_element(
+                mock_data[3].clone(),
+                &merkle_proof,
+                merkle_tree.get_root(),
+                3
+            )
+            .unwrap()
+        );
     }
 
     // Add an element without needing to extend the tree

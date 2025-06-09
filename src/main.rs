@@ -12,7 +12,7 @@ pub fn main() {
         println!(
             "\nFor data: {:?} the hash is: {:?}",
             String::from_utf8(d.clone()).unwrap(),
-            Sha256::digest(d)
+            hex::encode(Sha256::digest(d))
         );
     }
 
@@ -24,7 +24,7 @@ pub fn main() {
     println!(
         "Now let's add the element {:?} with hash {:?}",
         "!",
-        Sha256::digest(b"!")
+        hex::encode(Sha256::digest(b"!"))
     );
 
     // Add an element
@@ -55,7 +55,7 @@ pub fn main() {
         merkle_tree.get_root(),
         element_index,
     );
-    assert!(result);
+    assert!(result.unwrap());
     println!("The element was verified!\n");
 }
 

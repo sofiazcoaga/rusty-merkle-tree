@@ -3,6 +3,9 @@ name = "rusty-merkle-tree"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+path = "src/merkle_tree.rs"
+
 [dependencies]
 lazy_static = "1.5.0"
 sha256 = "1.6.0"

@@ -285,7 +285,6 @@ pub fn verify_element(
 
 #[cfg(test)]
 mod test {
-    use crate::merkle_tree;
 
     use super::*;
 

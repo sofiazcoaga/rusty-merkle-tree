@@ -1,6 +1,7 @@
-use crate::merkle_tree::{MerkleTree, create_merkle_tree_from_data, verify_element};
+use rusty_merkle_tree::{create_merkle_tree_from_data, verify_element, MerkleTree};
 
-pub mod merkle_tree;
+
+
 pub fn main() {
     // Create a Merkle Tree with 3 data elements will generate a tree with 4 leaves
     let my_data = vec![

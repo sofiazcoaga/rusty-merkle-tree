@@ -1,4 +1,5 @@
 use rusty_merkle_tree::{MerkleTree, verify_element};
+use sha2::{Digest, Sha256};
 
 pub fn main() {
     // Create a Merkle Tree with 3 data elements will generate a tree with 4 leaves
@@ -11,7 +12,7 @@ pub fn main() {
         println!(
             "\nFor data: {:?} the hash is: {:?}",
             String::from_utf8(d.clone()).unwrap(),
-            sha256::digest(d)
+            Sha256::digest(d)
         );
     }
 
@@ -23,7 +24,7 @@ pub fn main() {
     println!(
         "Now let's add the element {:?} with hash {:?}",
         "!",
-        sha256::digest(b"!".to_vec())
+        Sha256::digest(b"!")
     );
 
     // Add an element
@@ -62,18 +63,18 @@ pub fn main() {
 fn print_three_level_tree(tree: &MerkleTree) {
     println!(
         "\n                 {:?}        \n",
-        &tree.get_tree_element(0, 0)[..8]
+        &hex::encode(tree.get_tree_element(0, 0))[..8]
     );
     println!(
         "      {:?}              {:?}    \n",
-        &tree.get_tree_element(1, 0)[..8],
-        &tree.get_tree_element(1, 1)[..8]
+        &hex::encode(tree.get_tree_element(1, 0))[..8],
+        &hex::encode(tree.get_tree_element(1, 1))[..8]
     );
     println!(
         " {:?} {:?}   {:?} {:?} \n",
-        &tree.get_tree_element(2, 0)[..8],
-        &tree.get_tree_element(2, 1)[..8],
-        &tree.get_tree_element(2, 2)[..8],
-        &tree.get_tree_element(2, 3)[..8]
+        &hex::encode(tree.get_tree_element(2, 0))[..8],
+        &hex::encode(tree.get_tree_element(2, 1))[..8],
+        &hex::encode(tree.get_tree_element(2, 2))[..8],
+        &hex::encode(tree.get_tree_element(2, 3))[..8]
     );
 }

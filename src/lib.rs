@@ -1,13 +1,18 @@
 use lazy_static::lazy_static;
+use sha2::{
+    Digest, Sha256,
+    digest::{consts::U32, generic_array::GenericArray},
+};
 use std::vec;
 
 // The hash of the zero value
 lazy_static! {
-    static ref DEFAULT_ZERO_HASH: String = sha256::digest(&[0]);
+    static ref DEFAULT_ZERO_HASH: GenericArray<u8, U32> = Sha256::digest([0]);
 }
 
 type Input = Vec<Vec<u8>>;
-type HashTree = Vec<Vec<String>>;
+type Hash = GenericArray<u8, U32>;
+type HashTree = Vec<Vec<Hash>>;
 
 /// Errors related to input data.
 #[derive(Debug, PartialEq)]
@@ -41,7 +46,7 @@ impl MerkleTree {
             return Err(MerkleTreeError::DataLengthIsZero);
         }
         let mut merkle_tree = MerkleTree::default();
-        let data_hashes_level = create_data_hashes(inputs);
+        let data_hashes_level: Vec<Hash> = create_data_hashes(inputs);
 
         let tree = create_hash_tree_from_leaves(data_hashes_level);
 
@@ -56,13 +61,13 @@ impl MerkleTree {
     }
 
     /// Returns the root of the Merkle Tree.
-    pub fn get_root(&self) -> String {
-        self.get_tree_element(0, 0).clone()
+    pub fn get_root(&self) -> Hash {
+        *self.get_tree_element(0, 0)
     }
 
     /// Returns an immutable reference to the hash stored in a certain level and index
     /// of the Merkle Tree.
-    pub fn get_tree_element(&self, level: usize, index: usize) -> &String {
+    pub fn get_tree_element(&self, level: usize, index: usize) -> &Hash {
         &self.merkle_tree[level][index]
     }
 
@@ -72,7 +77,7 @@ impl MerkleTree {
     }
 
     /// Returns an immutable reference to an entire level of the tree.
-    pub fn get_level(&self, level: usize) -> &[String] {
+    pub fn get_level(&self, level: usize) -> &[Hash] {
         &self.merkle_tree[level]
     }
 
@@ -82,7 +87,7 @@ impl MerkleTree {
     }
 
     /// Allows to push a level at the top of the tree.
-    fn push_level_front(&mut self, level: Vec<String>) {
+    fn push_level_front(&mut self, level: Vec<Hash>) {
         self.merkle_tree.insert(0, level);
     }
 
@@ -93,7 +98,7 @@ impl MerkleTree {
     }
 
     /// Sets the hash of a specific node in a tree, given its level and index.
-    fn set_element(&mut self, level: usize, index: usize, element: String) {
+    fn set_element(&mut self, level: usize, index: usize, element: Hash) {
         self.merkle_tree[level][index] = element;
     }
 
@@ -151,8 +156,8 @@ impl MerkleTree {
         let fill_amount = ((leaves_amount + 1).next_power_of_two() - leaves_amount) - 1;
 
         // Create the leaves level of the new subtree
-        let mut leaves = vec![sha256::digest(new_element)];
-        leaves.append(&mut vec![DEFAULT_ZERO_HASH.to_string(); fill_amount]);
+        let mut leaves = vec![Sha256::digest(new_element)];
+        leaves.append(&mut vec![*DEFAULT_ZERO_HASH; fill_amount]);
 
         // Create a new merkle tree for the new data subset
         let half_merkle_tree = create_hash_tree_from_leaves(leaves);
@@ -164,7 +169,7 @@ impl MerkleTree {
 
         // Obtain the new root from the roots of the two subtrees.
         let root =
-            sha256::digest(self.get_tree_element(0, 0).clone() + self.get_tree_element(0, 1));
+            Sha256::digest([*self.get_tree_element(0, 0), *self.get_tree_element(0, 1)].concat());
         self.push_level_front(vec![root]);
     }
 
@@ -173,19 +178,27 @@ impl MerkleTree {
         let mut element_index = self.last_element_index + 1;
         let mut parent_index = element_index / 2;
         let mut level = self.height() - 1;
-        let mut element_hash = sha256::digest(new_element.clone());
+        let mut element_hash = Sha256::digest(new_element.clone());
 
         // Insert the new element in the first index that was filled with default data
-        self.set_element(level, element_index, element_hash.clone());
+        self.set_element(level, element_index, element_hash);
 
         // While we are not in the top level, keep updating the parents
         while level != 0 {
             let concat = match element_index % 2 {
-                0 => element_hash.clone() + self.get_tree_element(level, element_index + 1),
-                _ => self.get_tree_element(level, element_index - 1).clone() + &element_hash,
+                0 => [
+                    element_hash,
+                    *self.get_tree_element(level, element_index + 1),
+                ]
+                .concat(),
+                _ => [
+                    *self.get_tree_element(level, element_index - 1),
+                    element_hash,
+                ]
+                .concat(),
             };
-            element_hash = sha256::digest(concat);
-            self.set_element(level - 1, parent_index, element_hash.clone());
+            element_hash = Sha256::digest(concat);
+            self.set_element(level - 1, parent_index, element_hash);
             level -= 1;
             element_index = parent_index;
             parent_index = element_index / 2;
@@ -195,7 +208,7 @@ impl MerkleTree {
     /// Provides an vector of hashes known as "proof" that give a user the possibility to verify
     /// that an element in a specific index is a part of the tree. This pairs with the `verify_element`
     /// function to prove an element is a part of a tree.
-    pub fn get_merkle_proof(&self, element_index: usize) -> Vec<String> {
+    pub fn get_merkle_proof(&self, element_index: usize) -> Vec<Hash> {
         let mut proof = Vec::new();
         let mut element_index = element_index;
         let mut level = self.height() - 1;
@@ -205,8 +218,8 @@ impl MerkleTree {
                 0 => element_index += 1,
                 _ => element_index -= 1,
             }
-            let proof_element = self.get_tree_element(level, element_index).clone();
-            proof.push(proof_element);
+            let proof_element = self.get_tree_element(level, element_index);
+            proof.push(*proof_element);
             level -= 1;
             element_index /= 2;
         }
@@ -217,7 +230,7 @@ impl MerkleTree {
 
 /// Allows the creation of a Merkle Tree from its base level (or leaves level) which are the hashes of the original
 /// data. This function is useful to extend the Merkle Tree when adding a new element.
-fn create_hash_tree_from_leaves(leaves: Vec<String>) -> HashTree {
+fn create_hash_tree_from_leaves(leaves: Vec<Hash>) -> HashTree {
     let mut merkle_tree = Vec::new();
     merkle_tree.push(leaves.clone());
     let mut previous_level = leaves;
@@ -235,19 +248,16 @@ fn create_hash_tree_from_leaves(leaves: Vec<String>) -> HashTree {
 /// Creates the leaves level from a specific input. Meaning it hashes every data element from the input and returns
 /// a vector of those hashes that can later be used as the lower level of the tree.
 /// Notice that it fills with default elements if necessary to reach an amount that is a power of two.
-fn create_data_hashes(inputs: &Input) -> Vec<String> {
-    let mut data_hashes = Vec::new();
+fn create_data_hashes(inputs: &Input) -> Vec<Hash> {
+    let mut data_hashes: Vec<Hash> = Vec::new();
 
     for i in inputs {
-        data_hashes.push(sha256::digest(i));
+        data_hashes.push(Sha256::digest(i));
     }
     let data_len = inputs.len();
     if !data_len.is_power_of_two() {
         let fill_amount = data_len.next_power_of_two() - data_len;
-        data_hashes.append(&mut vec![
-            DEFAULT_ZERO_HASH.to_string().clone();
-            fill_amount
-        ]);
+        data_hashes.append(&mut vec![*DEFAULT_ZERO_HASH; fill_amount]);
     }
 
     data_hashes
@@ -255,13 +265,13 @@ fn create_data_hashes(inputs: &Input) -> Vec<String> {
 
 /// Given the previous constructed level of the Merkle Tree it allows to create a parent level for it by concatenating
 /// elements in pairs and hashing the results. It is helpful to construct a Merkle Tree from bottom to top.
-fn create_new_level(previous_level: &[String]) -> Vec<String> {
+fn create_new_level(previous_level: &[Hash]) -> Vec<Hash> {
     let mut index = 0;
     let mut new_level = Vec::new();
 
     while index < previous_level.len() {
-        let element_concat = previous_level[index].clone() + &previous_level[index + 1];
-        let element_hash = sha256::digest(element_concat);
+        let element_concat = [previous_level[index], previous_level[index + 1]].concat();
+        let element_hash = Sha256::digest(element_concat);
         new_level.push(element_hash);
         index += 2;
     }
@@ -273,18 +283,18 @@ fn create_new_level(previous_level: &[String]) -> Vec<String> {
 /// in the Merkle Tree.
 pub fn verify_element(
     element_data: Vec<u8>,
-    proof: &[String],
-    root: String,
+    proof: &[Hash],
+    root: Hash,
     element_index: usize,
 ) -> bool {
-    let mut hash = sha256::digest(element_data);
+    let mut hash = Sha256::digest(element_data);
     let mut index = element_index;
     for p in proof {
         let concat = match index % 2 {
-            0 => hash.clone() + p,
-            _ => p.to_owned() + &hash,
+            0 => [hash, *p].concat(),
+            _ => [*p, hash].concat(),
         };
-        hash = sha256::digest(concat);
+        hash = Sha256::digest(concat);
         index /= 2;
     }
     hash == root
@@ -301,7 +311,7 @@ mod test {
         let hashes = create_data_hashes(&mock_data);
 
         for i in 0..hashes.len() {
-            assert_eq!(hashes[i], sha256::digest(mock_data[i].clone()));
+            assert_eq!(hashes[i], Sha256::digest(mock_data[i].clone()));
         }
     }
 
@@ -360,11 +370,7 @@ mod test {
         let fill_amount = mock_data.len().next_power_of_two() - mock_data.len();
         let default_data = data_hashes[data_hashes.len() - fill_amount..data_hashes.len()].to_vec();
         assert_eq!(merkle_tree.last_element_index(), mock_data.len() - 1);
-        assert!(
-            default_data
-                .iter()
-                .all(|x| *x == DEFAULT_ZERO_HASH.to_string())
-        );
+        assert!(default_data.iter().all(|x| *x == *DEFAULT_ZERO_HASH));
         assert_eq!(data_hashes.len(), mock_data.len().next_power_of_two());
     }
 
@@ -467,8 +473,8 @@ mod test {
                 for x in 0..higher_level.len() {
                     let l_child = lower_level[x * 2].clone();
                     let r_child = lower_level[x * 2 + 1].clone();
-                    let concat_children = l_child + &r_child;
-                    let hashed_children = sha256::digest(concat_children);
+                    let concat_children = [l_child, r_child].concat();
+                    let hashed_children = Sha256::digest(concat_children);
                     assert_eq!(higher_level[x], hashed_children);
                 }
             }

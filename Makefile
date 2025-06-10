@@ -8,8 +8,7 @@ clean:
 	cargo clean
 
 example:
-	cargo build
-	cargo run
+	cargo run --example merkle_tree_example
 
 doc:
 	cargo doc --open --no-deps

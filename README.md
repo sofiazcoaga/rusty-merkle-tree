@@ -21,15 +21,16 @@ A Merkle Tree (also called Hash Tree) is a binary tree where every leaf is the h
 
 # Creating a Merkle Tree
 In order to create a Merkle Tree, call the static method:
-`new_from_data()` that takes a `Vec<Vec<u8>>` as an input. This means it takes a vector of buffers that can be anything in its content.
+`MerkleTree::new_from_data()` that takes a `Vec<Vec<u8>>` as an input. This means it takes a vector of buffers that can be anything in its content.
 
 Let's say we want to store the words "Hello" and "World" in a Merkle Tree, we could do something like:
 ```rust
 let hello_as_bytes = b"Hello".to_vec();
 let world_as_bytes = b"World".to_vec();
 // Consider: `unwrap()` is not safe, only use if certain that the result of the function is Ok().
-// This is only for example purposes.
-let merkle_tree = MerkleTree::new_from_data(vec![hello_as_bytes, world_as_bytes]).unwrap();
+// This is only for example purposes. Also take into account that it is important for `merkle_tree`
+// to be mutable.
+let mut merkle_tree = MerkleTree::new_from_data(&vec![hello_as_bytes, world_as_bytes]).unwrap();
 ```
 
 # Adding an element to a Merkle Tree
@@ -57,5 +58,5 @@ let hello_index = 0; // We must know the index of the content we will be asking 
 let hello_proof = merkle_tree.get_merkle_proof(hello_index);
 
 // Verified will be a boolean value. If it is true, then the element was verified for that position in that tree. If false, the element was not verified.
-let verified = verify_element(hello_as_bytes, hello_proof, merkle_tree.get_root(), hello_index);
+let verified = verify_element(hello_as_bytes, &hello_proof, merkle_tree.get_root(), hello_index);
 ```

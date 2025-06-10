@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  # Triggers the workflow on push or pull request events but for the "main" and "dev" branches
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev"]
+
+  # Allows to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # Checks-out the repository under $GITHUB_WORKSPACE, the job can access it
+      - uses: actions/checkout@v4
+      - name: Build and Run tests
+        run: |
+          cargo build
+          cargo clippy -- -D warnings
+          cargo fmt --all -- --check
+          cargo test

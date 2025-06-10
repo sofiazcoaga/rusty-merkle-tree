@@ -45,7 +45,7 @@ impl MerkleTree {
         if inputs.is_empty() {
             return Err(MerkleTreeError::DataLengthIsZero);
         }
-        if !inputs.iter().all(|x| !x.is_empty()) {
+        if inputs.iter().any(|x| x.is_empty()) {
             return Err(MerkleTreeError::DataIsEmpty);
         }
 
